@@ -1,0 +1,316 @@
+<div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 h-full">
+  <div class="grid grid-cols-12 gap-4">
+    <div
+      [formGroup]="businessProcessForm"
+      class="bg-white shadow rounded-lg p-6 flex flex-col col-span-12 lg:col-span-7 overflow-y-auto"
+    >
+      <div class="content-center flex justify-start items-start">
+        <div class="flex justify-between w-full items-center mb-4">
+          <h1 class="text-lg font-semibold" *ngIf="mode === 'add'">
+            {{ folderName | expandDescription }}
+          </h1>
+          <h1 class="text-lg font-semibold" *ngIf="mode === 'edit'">
+            {{ bpRequirementId }}
+          </h1>
+          <div class="flex items-center">
+            <app-button
+              *ngIf="mode === 'edit'"
+              buttonContent="View BP Flow"
+              theme="secondary"
+              size="sm"
+              rounded="md"
+              (click)="navigateToBPFlow()"
+            />
+            <div
+              *ngIf="mode === 'edit'"
+              class="flex items-center space-x-1 text-3xl ml-3"
+            >
+              <app-button
+                [isIconButton]="true"
+                icon="heroTrash"
+                theme="danger"
+                size="sm"
+                rounded="md"
+                (click)="deleteBP()"
+              ></app-button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="flex flex-col gap-1.5">
+          <div class="flex flex-col">
+            <app-input-field elementPlaceHolder="Title" elementId="title" elementName="Title" formControlName="title"
+              [required]="true" />
+            <div *ngIf="
+                              businessProcessForm.get('title')?.errors?.['required'] &&
+                              businessProcessForm.get('title')?.touched
+                            " class="text-danger-500 text-sm">
+              Title is required
+            </div>
+          </div>
+        
+          <div class="flex flex-col gap-1.5">
+            <label class="block text-sm font-medium text-secondary-500">
+              Description
+              <span class="text-red-500 text-xs">*</span>
+            </label>
+            <div class="flex flex-col gap-1.5">
+              <app-rich-text-editor formControlName="content" editorClass="h-80 overflow-y-auto"></app-rich-text-editor>
+              <ng-container *ngIf="businessProcessForm.get('content')?.touched">
+                <span *ngIf="businessProcessForm.get('content')?.errors?.['required']" class="text-red-500 text-sm">
+                  Description is required
+                </span>
+              </ng-container>
+            </div>
+          </div>
+        </div>
+
+        <div class="flex items-center justify-between mt-4">
+          <div class="flex-col">
+            <div class="flex items-center">
+              <app-button
+                buttonContent="Enhance with AI"
+                icon="heroSparklesSolid"
+                theme="secondary"
+                size="sm"
+                rounded="lg"
+                (click)="
+                  mode === 'add'
+                    ? addBusinessProcess(true)
+                    : updateBusinessProcess(true)
+                "
+                [disabled]="checkFormValidity()"
+              ></app-button>
+            </div>
+          </div>
+          <div>
+            <app-button
+              buttonContent="Update"
+              theme="primary"
+              size="sm"
+              rounded="md"
+              *ngIf="mode === 'edit'"
+              (click)="updateBusinessProcess()"
+              [disabled]="checkFormValidity()"
+            />
+            <app-button
+              buttonContent="Add"
+              theme="primary"
+              size="sm"
+              rounded="md"
+              *ngIf="mode === 'add'"
+              [disabled]="checkFormValidity()"
+              (click)="addBusinessProcess()"
+            />
+          </div>
+        </div>
+      </div>
+      <div *ngIf="selectedBRDs.length > 0" class="mt-4">
+        <h2 class="text-sm font-medium text-secondary-900">Included BRDs</h2>
+        <div class="mt-2 flex flex-wrap">
+          <div *ngFor="let brd of selectedBRDs" class="m-1">
+            <div
+              class="flex items-center bg-secondary-200 px-2 py-1 rounded-md"
+            >
+              <span class="text-sm font-medium">{{
+                brd.fileName.split("-")[0]
+              }}</span>
+              <button
+                class="ml-2 text-secondary-600 hover:text-secondary-800"
+                (click)="removeBRD(brd)"
+              >
+                &times;
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="mt-4" *ngIf="selectedPRDs.length > 0">
+        <h2 class="text-sm font-medium text-secondary-900">Included PRDs</h2>
+        <div class="mt-2 flex flex-wrap">
+          <div *ngFor="let prd of selectedPRDs" class="m-1">
+            <div
+              class="flex items-center bg-secondary-200 px-2 py-1 rounded-md"
+            >
+              <span class="text-sm font-medium">{{
+                prd.fileName.split("-")[0]
+              }}</span>
+              <button
+                class="ml-2 text-secondary-600 hover:text-secondary-800"
+                (click)="removePRD(prd)"
+              >
+                &times;
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- Display empty message if no documents are present -->
+      <div
+        *ngIf="selectedPRDs.length === 0 && selectedBRDs.length === 0"
+        class="py-10"
+      >
+        <div
+          *ngIf="businessProcessForm.errors?.['noPrdOrBrd']"
+          class="text-danger-500 text-center text-xs mt-1"
+        >
+          Please select at least one PRD or BRD.
+        </div>
+      </div>
+    </div>
+
+    <div class="bg-white shadow rounded-lg col-span-12 lg:col-span-5">
+      <div class="flex justify-center rounded-lg bg-secondary-100 w-full">
+        <div class="tabs w-full max-w-4xl overflow-hidden flex rounded-t-lg">
+          <button
+            *ngIf="mode === 'edit'"
+            (click)="switchTab('chat')"
+            class="tab flex-grow text-center py-3 text-sm font-semibold border-r-2 border-secondary-300"
+            [ngClass]="{
+              'bg-secondary-100 text-secondary-700 hover:bg-secondary-200':
+                activeTab !== 'chat',
+              'bg-secondary-700 text-white hover:bg-secondary-600':
+                activeTab === 'chat',
+            }"
+          >
+            Chat
+          </button>
+          <button
+            (click)="switchTab('includeFiles')"
+            class="tab flex-grow text-center py-3 text-sm font-semibold"
+            [ngClass]="{
+              'bg-secondary-100 text-secondary-700 hover:bg-secondary-200':
+                activeTab !== 'includeFiles',
+              'bg-secondary-700 text-white hover:bg-secondary-600':
+                activeTab === 'includeFiles',
+            }"
+          >
+            Include BRDs & PRDs
+          </button>
+        </div>
+      </div>
+
+      <div *ngIf="activeTab === 'includeFiles'" class="">
+        <div class="space-y-12">
+          <div>
+            <div>
+              <div class="tabs px-4 pt-4">
+                <button
+                  (click)="selectTab(requirementTypes.PRD)"
+                  class="tab px-3 py-2 text-sm font-semibold rounded-t-md border-b-2"
+                  [class.active]="selectedTab === requirementTypes.PRD"
+                  [ngClass]="{
+                    'border-primary-600 text-primary-600':
+                      selectedTab === requirementTypes.PRD,
+                    'border-transparent text-secondary-500 hover:text-secondary-700 hover:border-secondary-300':
+                      selectedTab !== requirementTypes.PRD,
+                  }"
+                >
+                  PRD ({{ selectedPRDs.length }})
+                </button>
+                <button
+                  (click)="selectTab(requirementTypes.BRD)"
+                  class="tab px-3 py-2 text-sm font-semibold rounded-t-md border-b-2"
+                  [class.active]="selectedTab === requirementTypes.BRD"
+                  [ngClass]="{
+                    'border-primary-600 text-primary-600':
+                      selectedTab === requirementTypes.BRD,
+                    'border-transparent text-secondary-500 hover:text-secondary-700 hover:border-secondary-300':
+                      selectedTab !== requirementTypes.BRD,
+                  }"
+                >
+                  BRD ({{ selectedBRDs.length }})
+                </button>
+              </div>
+              <div class="px-4 pb-4">
+                <div class="" *ngIf="originalDocumentList$ | async as list">
+                  <div
+                    *ngIf="!!list?.length; else noDocuments"
+                    class="grid grid-cols-1 gap-3 sm:gap-3 lg:gap-3 overflow-y-auto mt-4 doc-section-height auto-rows-max"
+                  >
+                    <ng-container *ngFor="let item of list">
+                      <div
+                        *ngIf="
+                          (selectedTab === requirementTypes.PRD &&
+                            item.folderName === requirementTypes.PRD) ||
+                          (selectedTab === requirementTypes.BRD &&
+                            item.folderName === requirementTypes.BRD)
+                        "
+                        class="col-span-1 flex h-fit"
+                      >
+                        <div class="flex items-center m-2">
+                          <input
+                            type="checkbox"
+                            [value]="
+                              JSON.stringify({
+                                requirement: item.content.requirement,
+                                fileName: item.fileName,
+                              })
+                            "
+                            (change)="toggleSelection($event, selectedTab)"
+                            [checked]="
+                              isSelected(
+                                {
+                                  requirement: item?.content?.requirement,
+                                  fileName: item.fileName,
+                                },
+                                selectedTab
+                              )
+                            "
+                            class="w-4 h-4 text-primary-600 border-secondary-300 rounded focus:ring-primary-500"
+                          />
+                        </div>
+                        <div class="flex-1 truncate rounded-md shadow-sm">
+                          <div
+                            class="flex-1 flex flex-col justify-start rounded-lg border border-secondary-200 bg-white"
+                          >
+                            <!-- Adjusted class here -->
+                            <div class="px-3 py-2 text-sm flex flex-col gap-1">
+                              <a class="font-semibold text-secondary-600">
+                                {{ item.fileName.replace("-base.json", "") }}
+                              </a>
+                              <h1 class="text-base font-medium truncate">
+                                {{ item.content.title }}
+                              </h1>
+                              <ng-container *ngIf="item.content.requirement as requirement">
+                                <app-rich-text-editor editorClass="prose-secondary-view text-wrap overflow-y-hidden prose-xs" mode="view"
+                                  [content]="truncatePRDandBRDRequirement(item.content.requirement, item.folderName)" [editable]="false">
+                                </app-rich-text-editor>
+                              </ng-container>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </ng-container>
+                  </div>
+                </div>
+                <ng-template #noDocuments>
+                  <div class="py-10">
+                    <h2 class="text-center text-secondary-500">
+                      No documents available
+                    </h2>
+                  </div>
+                </ng-template>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div *ngIf="activeTab === 'chat'" class="space-y-4 alter-height">
+        <app-chat
+          class="h-[inherit]"
+          chatType="requirement"
+          [name]="name"
+          [description]="description"
+          [fileName]="fileName"
+          [chatHistory]="chatHistory"
+          [supportsAddFromCode]="false"
+          [baseContent]="businessProcessForm.getRawValue().content"
+          (getContent)="appendRequirement($event)"
+          (updateChatHistory)="updateChatHistory($event)"
+        />
+      </div>
+    </div>
+  </div>
+</div>
