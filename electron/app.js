@@ -1,4 +1,5 @@
 const { app, ipcMain, BrowserWindow, dialog, shell } = require("electron");
+const { autoUpdater } = require("electron-updater");
 const path = require("path");
 const fs = require("fs");
 const express = require("express");
@@ -127,7 +128,54 @@ function createWindow() {
   });
 }
 
+// Update event listeners
+autoUpdater.on("update-available", () => {
+  console.debug('DEBUG: inside [update-available]');
+
+  dialog.showMessageBox({
+    type: "info",
+    title: "Update Available",
+    message: "A new update is available. It will be downloaded in the background.",
+  });
+});
+
+autoUpdater.on("update-downloaded", () => {
+  console.debug('DEBUG: inside [update-downloaded]');
+  
+  dialog
+    .showMessageBox({
+      type: "info",
+      title: "Update Ready",
+      message: "An update has been downloaded. Restart the app to apply the update?",
+      buttons: ["Restart", "Later"],
+    })
+    .then((result) => {
+      if (result.response === 0) {
+        autoUpdater.quitAndInstall();
+      }
+    });
+});
+
+autoUpdater.on("checking-for-update", () => {
+  console.debug("Checking for updates...", autoUpdater.getFeedURL());
+});
+
+autoUpdater.on("update-not-available", (info) => {
+  console.debug("No updates available:", info);
+});
+
+autoUpdater.on("download-progress", (progress) => {
+  console.debug(
+    `Download speed: ${progress.bytesPerSecond} - Downloaded ${progress.percent}%`
+  );
+});
+
+autoUpdater.on("error", (error) => {
+  dialog.showErrorBox("Update Error", error == null ? "Unknown error" : error.message);
+});
+
 app.whenReady().then(() => {
+  autoUpdater.checkForUpdatesAndNotify();
   createWindow();
 
   app.on("activate", () => {
